@@ -19,6 +19,7 @@ import "./routes/manifests.tsp";
 import "./routes/orders.tsp";
 import "./routes/users.tsp";
 import "./routes/auth.tsp";
+import "./routes/auth-v1.tsp";
 import "./routes/achievements.tsp";
 import "./routes/dashboard.tsp";
 
@@ -33,8 +34,21 @@ using TypeSpec.OpenAPI;
  * 
  * ## Base URLs
  * 
- * - **API Base**: `https://api.warframe.market/v2/`
+ * - **V2 API**: `https://api.warframe.market/v2/`
+ * - **V1 API** (auth only): `https://api.warframe.market/v1/`
  * - **Static Assets**: `https://warframe.market/static/assets/`
+ * 
+ * ## Authentication
+ * 
+ * Authentication is currently handled via the **V1 API**. To authenticate:
+ * 
+ * 1. Send a POST request to `/v1/auth/signin` with credentials
+ * 2. Extract the JWT from the `Authorization` response header (strip "JWT " prefix)
+ * 3. Use the token as `Bearer <token>` in subsequent V2 API requests
+ * 
+ * See the **Authentication (V1)** section for details.
+ * 
+ * **Note**: OAuth 2.0 is planned for future implementation.
  * 
  * ## Rate Limits
  * 
