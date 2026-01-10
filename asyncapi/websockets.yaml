@@ -1,0 +1,680 @@
+asyncapi: 3.0.0
+
+info:
+  title: warframe.market WebSocket API
+  version: 0.12.4
+  description: |
+    Real-time WebSocket API for warframe.market.
+
+    ## Connection
+
+    Connect to: `wss://ws.warframe.market/socket`
+
+    **Important**: You must use the `wfm` sub-protocol when establishing the connection.
+
+    ```javascript
+    const socket = new WebSocket('wss://ws.warframe.market/socket', 'wfm');
+    ```
+
+    ## Message Structure
+
+    All messages are JSON-encoded with the following structure:
+
+    ```json
+    {
+      "route": "@module/action",
+      "payload": { ... },
+      "id": "unique-message-id",
+      "refId": "reference-to-previous-message-id"
+    }
+    ```
+
+    - `route`: Identifies which handler should process the message
+    - `payload`: Message data (varies by route)
+    - `id`: Unique identifier for this message
+    - `refId`: Reference to another message (for responses)
+
+    ## Message Types
+
+    - **Command** (💬): Request that expects a response (ok or error)
+    - **Event** (🔔): One-way message, no response expected
+
+  contact:
+    name: warframe.market
+    url: https://warframe.market
+  license:
+    name: MIT
+
+servers:
+  production:
+    host: ws.warframe.market
+    pathname: /socket
+    protocol: wss
+    description: Production WebSocket server
+    bindings:
+      ws:
+        subprotocol: wfm
+
+channels:
+  socket:
+    address: /socket
+    messages:
+      # Reports
+      onlineCount:
+        $ref: '#/components/messages/OnlineCount'
+      
+      # Auth - Outgoing
+      signIn:
+        $ref: '#/components/messages/SignIn'
+      signOut:
+        $ref: '#/components/messages/SignOut'
+      setStatus:
+        $ref: '#/components/messages/SetStatus'
+      
+      # Auth - Incoming
+      signInResponse:
+        $ref: '#/components/messages/SignInResponse'
+      signOutResponse:
+        $ref: '#/components/messages/SignOutResponse'
+      setStatusResponse:
+        $ref: '#/components/messages/SetStatusResponse'
+      revoke:
+        $ref: '#/components/messages/Revoke'
+      verificationUpdate:
+        $ref: '#/components/messages/VerificationUpdate'
+      banned:
+        $ref: '#/components/messages/Banned'
+      warned:
+        $ref: '#/components/messages/Warned'
+      banLifted:
+        $ref: '#/components/messages/BanLifted'
+      warningLifted:
+        $ref: '#/components/messages/WarningLifted'
+      statusUpdate:
+        $ref: '#/components/messages/StatusUpdate'
+      
+      # Order Subscriptions - Outgoing
+      subscribeNewOrders:
+        $ref: '#/components/messages/SubscribeNewOrders'
+      unsubscribeNewOrders:
+        $ref: '#/components/messages/UnsubscribeNewOrders'
+      subscribeItem:
+        $ref: '#/components/messages/SubscribeItem'
+      unsubscribeItem:
+        $ref: '#/components/messages/UnsubscribeItem'
+      subscribeProfile:
+        $ref: '#/components/messages/SubscribeProfile'
+      unsubscribeProfile:
+        $ref: '#/components/messages/UnsubscribeProfile'
+      
+      # Order Events - Incoming
+      orderNew:
+        $ref: '#/components/messages/OrderNew'
+
+operations:
+  # Reports
+  receiveOnlineCount:
+    action: receive
+    channel:
+      $ref: '#/channels/socket'
+    summary: Receive online count report
+    description: Server sends this every 30 seconds with connection statistics.
+    messages:
+      - $ref: '#/channels/socket/messages/onlineCount'
+
+  # Authentication
+  sendSignIn:
+    action: send
+    channel:
+      $ref: '#/channels/socket'
+    summary: Sign in to WebSocket
+    description: |
+      Authenticate the WebSocket connection. Required for most commands.
+      Supports auth tokens from the v1 API.
+    messages:
+      - $ref: '#/channels/socket/messages/signIn'
+
+  receiveSignInResponse:
+    action: receive
+    channel:
+      $ref: '#/channels/socket'
+    summary: Sign in response
+    messages:
+      - $ref: '#/channels/socket/messages/signInResponse'
+
+  sendSignOut:
+    action: send
+    channel:
+      $ref: '#/channels/socket'
+    summary: Sign out from WebSocket
+    messages:
+      - $ref: '#/channels/socket/messages/signOut'
+
+  sendSetStatus:
+    action: send
+    channel:
+      $ref: '#/channels/socket'
+    summary: Set user status and activity
+    description: |
+      Update user's online status and in-game activity.
+      
+      **Requires**: Authentication, Scopes: `status`, `activity`
+      
+      **Important**: The server is the source of truth for status. Wait for 
+      status updates from the server before making changes. Multiple clients
+      may be connected simultaneously.
+    messages:
+      - $ref: '#/channels/socket/messages/setStatus'
+
+  receiveStatusUpdate:
+    action: receive
+    channel:
+      $ref: '#/channels/socket'
+    summary: Receive status update
+    description: |
+      Sent when user's status changes (from any connected client) or 
+      immediately after successful sign-in.
+    messages:
+      - $ref: '#/channels/socket/messages/statusUpdate'
+
+  receiveRevoke:
+    action: receive
+    channel:
+      $ref: '#/channels/socket'
+    summary: Session revoked
+    description: |
+      Server revoked the session. Reasons include: logout from all devices,
+      password change, or token expiration.
+    messages:
+      - $ref: '#/channels/socket/messages/revoke'
+
+  receiveBanned:
+    action: receive
+    channel:
+      $ref: '#/channels/socket'
+    summary: User banned notification
+    messages:
+      - $ref: '#/channels/socket/messages/banned'
+
+  receiveWarned:
+    action: receive
+    channel:
+      $ref: '#/channels/socket'
+    summary: User warned notification
+    messages:
+      - $ref: '#/channels/socket/messages/warned'
+
+  # Order Subscriptions
+  sendSubscribeNewOrders:
+    action: send
+    channel:
+      $ref: '#/channels/socket'
+    summary: Subscribe to new orders feed
+    description: |
+      Subscribe to receive live feed of newly posted orders from online users.
+      You can have multiple subscriptions active (e.g., one for PC, one for Xbox).
+    messages:
+      - $ref: '#/channels/socket/messages/subscribeNewOrders'
+
+  sendUnsubscribeNewOrders:
+    action: send
+    channel:
+      $ref: '#/channels/socket'
+    summary: Unsubscribe from new orders feed
+    description: Must provide the exact same payload used during subscription.
+    messages:
+      - $ref: '#/channels/socket/messages/unsubscribeNewOrders'
+
+  sendSubscribeItem:
+    action: send
+    channel:
+      $ref: '#/channels/socket'
+    summary: Subscribe to item orders
+    description: |
+      Subscribe to order updates for a specific item.
+      
+      **Requires**: Authentication, Scopes: `realTime`
+    messages:
+      - $ref: '#/channels/socket/messages/subscribeItem'
+
+  sendSubscribeProfile:
+    action: send
+    channel:
+      $ref: '#/channels/socket'
+    summary: Subscribe to profile orders
+    description: |
+      Subscribe to order updates for a specific user profile.
+      
+      **Requires**: Authentication, Scopes: `realTime`
+    messages:
+      - $ref: '#/channels/socket/messages/subscribeProfile'
+
+  receiveOrderNew:
+    action: receive
+    channel:
+      $ref: '#/channels/socket'
+    summary: New order notification
+    description: Received when a new order is posted (if subscribed).
+    messages:
+      - $ref: '#/channels/socket/messages/orderNew'
+
+components:
+  messages:
+    # Reports
+    OnlineCount:
+      name: onlineCount
+      title: Online Count Report
+      summary: Server reports connection statistics every 30 seconds
+      payload:
+        $ref: '#/components/schemas/OnlineCountPayload'
+
+    # Authentication Messages
+    SignIn:
+      name: signIn
+      title: Sign In Command
+      summary: Authenticate WebSocket connection
+      payload:
+        $ref: '#/components/schemas/SignInPayload'
+
+    SignInResponse:
+      name: signInResponse
+      title: Sign In Response
+      payload:
+        $ref: '#/components/schemas/CommandResponse'
+
+    SignOut:
+      name: signOut
+      title: Sign Out Command
+      payload:
+        $ref: '#/components/schemas/EmptyPayload'
+
+    SignOutResponse:
+      name: signOutResponse
+      title: Sign Out Response
+      payload:
+        $ref: '#/components/schemas/CommandResponse'
+
+    SetStatus:
+      name: setStatus
+      title: Set Status Command
+      summary: Update user status and activity
+      payload:
+        $ref: '#/components/schemas/SetStatusPayload'
+
+    SetStatusResponse:
+      name: setStatusResponse
+      title: Set Status Response
+      payload:
+        $ref: '#/components/schemas/StatusUpdatePayload'
+
+    Revoke:
+      name: revoke
+      title: Session Revoked Event
+      summary: Server revoked the authentication session
+      payload:
+        $ref: '#/components/schemas/EmptyPayload'
+
+    VerificationUpdate:
+      name: verificationUpdate
+      title: Verification Update Event
+      summary: Account verification status changed
+      payload:
+        $ref: '#/components/schemas/VerificationUpdatePayload'
+
+    Banned:
+      name: banned
+      title: User Banned Event
+      payload:
+        $ref: '#/components/schemas/BanPayload'
+
+    Warned:
+      name: warned
+      title: User Warned Event
+      payload:
+        $ref: '#/components/schemas/WarnPayload'
+
+    BanLifted:
+      name: banLifted
+      title: Ban Lifted Event
+      payload:
+        $ref: '#/components/schemas/EmptyPayload'
+
+    WarningLifted:
+      name: warningLifted
+      title: Warning Lifted Event
+      payload:
+        $ref: '#/components/schemas/EmptyPayload'
+
+    StatusUpdate:
+      name: statusUpdate
+      title: Status Update Event
+      summary: User status or activity changed
+      payload:
+        $ref: '#/components/schemas/StatusUpdatePayload'
+
+    # Order Subscription Messages
+    SubscribeNewOrders:
+      name: subscribeNewOrders
+      title: Subscribe to New Orders
+      payload:
+        $ref: '#/components/schemas/OrderSubscriptionPayload'
+
+    UnsubscribeNewOrders:
+      name: unsubscribeNewOrders
+      title: Unsubscribe from New Orders
+      payload:
+        $ref: '#/components/schemas/OrderSubscriptionPayload'
+
+    SubscribeItem:
+      name: subscribeItem
+      title: Subscribe to Item Orders
+      payload:
+        $ref: '#/components/schemas/ItemSubscriptionPayload'
+
+    UnsubscribeItem:
+      name: unsubscribeItem
+      title: Unsubscribe from Item Orders
+      payload:
+        $ref: '#/components/schemas/ItemSubscriptionPayload'
+
+    SubscribeProfile:
+      name: subscribeProfile
+      title: Subscribe to Profile Orders
+      payload:
+        $ref: '#/components/schemas/ProfileSubscriptionPayload'
+
+    UnsubscribeProfile:
+      name: unsubscribeProfile
+      title: Unsubscribe from Profile Orders
+      payload:
+        $ref: '#/components/schemas/ProfileSubscriptionPayload'
+
+    OrderNew:
+      name: orderNew
+      title: New Order Event
+      summary: A new order was posted
+      payload:
+        $ref: '#/components/schemas/OrderWithUser'
+
+  schemas:
+    # Base message structure
+    WebSocketMessage:
+      type: object
+      properties:
+        route:
+          type: string
+          description: Message route identifier
+        payload:
+          type: object
+          description: Message payload (varies by route)
+        id:
+          type: string
+          description: Unique message identifier
+        refId:
+          type: string
+          description: Reference to another message ID
+
+    EmptyPayload:
+      type: object
+      properties:
+        route:
+          type: string
+        payload:
+          type: object
+
+    CommandResponse:
+      type: object
+      properties:
+        route:
+          type: string
+        payload:
+          type: object
+          properties:
+            ok:
+              type: boolean
+            error:
+              type: string
+
+    # Report Schemas
+    OnlineCountPayload:
+      type: object
+      properties:
+        route:
+          type: string
+          const: '@reports/onlineCount'
+        payload:
+          type: object
+          properties:
+            connections:
+              type: integer
+              description: Total number of WebSocket connections
+            authorized:
+              type: integer
+              description: Number of authenticated users
+
+    # Auth Schemas
+    SignInPayload:
+      type: object
+      properties:
+        route:
+          type: string
+          const: '@user/signIn'
+        payload:
+          type: object
+          required:
+            - token
+          properties:
+            token:
+              type: string
+              description: Authentication token (or empty string for cookie-based auth)
+
+    SetStatusPayload:
+      type: object
+      properties:
+        route:
+          type: string
+          const: '@user/setStatus'
+        payload:
+          type: object
+          required:
+            - status
+          properties:
+            status:
+              type: string
+              enum: [online, ingame, invisible]
+              description: User status (no 'offline' option)
+            duration:
+              type: integer
+              nullable: true
+              minimum: 60
+              maximum: 21600
+              description: Status duration in seconds (60s to 6 hours)
+            activity:
+              $ref: '#/components/schemas/ActivityInput'
+
+    ActivityInput:
+      type: object
+      nullable: true
+      properties:
+        type:
+          type: string
+          enum: [UNKNOWN, IDLE, ON_MISSION, IN_DOJO, IN_ORBITER, IN_RELAY]
+        details:
+          type: string
+          maxLength: 64
+          description: Activity details (max 64 chars)
+        startedAt:
+          type: integer
+          description: Unix timestamp when activity started
+
+    StatusUpdatePayload:
+      type: object
+      properties:
+        route:
+          type: string
+          const: '@user/statusUpdate'
+        payload:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [offline, online, ingame]
+            statusUntil:
+              type: string
+              format: date-time
+              description: When status will expire
+            activity:
+              $ref: '#/components/schemas/Activity'
+
+    Activity:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [UNKNOWN, IDLE, ON_MISSION, IN_DOJO, IN_ORBITER, IN_RELAY]
+        details:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+
+    VerificationUpdatePayload:
+      type: object
+      properties:
+        route:
+          type: string
+          const: '@user/verificationUpdate'
+        payload:
+          type: object
+          properties:
+            ingameName:
+              type: string
+            verified:
+              type: boolean
+
+    BanPayload:
+      type: object
+      properties:
+        route:
+          type: string
+          const: '@user/banned'
+        payload:
+          type: object
+          properties:
+            banUntil:
+              type: string
+              format: date-time
+            banMessage:
+              type: string
+
+    WarnPayload:
+      type: object
+      properties:
+        route:
+          type: string
+          const: '@user/warned'
+        payload:
+          type: object
+          properties:
+            warnMessage:
+              type: string
+
+    # Order Subscription Schemas
+    OrderSubscriptionPayload:
+      type: object
+      properties:
+        route:
+          type: string
+        payload:
+          type: object
+          properties:
+            platform:
+              type: string
+              enum: [pc, ps4, xbox, switch, mobile]
+              description: Platform to subscribe to (omit for all platforms)
+            crossplay:
+              type: boolean
+              default: true
+              description: Include cross-play orders (switch always false)
+
+    ItemSubscriptionPayload:
+      type: object
+      properties:
+        route:
+          type: string
+        payload:
+          type: object
+          required:
+            - itemId
+          properties:
+            itemId:
+              type: string
+              description: Item ID to subscribe to
+
+    ProfileSubscriptionPayload:
+      type: object
+      properties:
+        route:
+          type: string
+        payload:
+          type: object
+          required:
+            - userId
+          properties:
+            userId:
+              type: string
+              description: User ID to subscribe to
+
+    # Order Schemas (referenced from OpenAPI)
+    OrderWithUser:
+      type: object
+      description: Trading order with user information
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [buy, sell]
+        platinum:
+          type: integer
+        quantity:
+          type: integer
+        visible:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        itemId:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserShort'
+
+    UserShort:
+      type: object
+      properties:
+        id:
+          type: string
+        ingameName:
+          type: string
+        avatar:
+          type: string
+        reputation:
+          type: integer
+        locale:
+          type: string
+        platform:
+          type: string
+          enum: [pc, ps4, xbox, switch, mobile]
+        crossplay:
+          type: boolean
+        status:
+          type: string
+          enum: [offline, online, ingame, invisible]
+        activity:
+          $ref: '#/components/schemas/Activity'
+        lastSeen:
+          type: string
+          format: date-time
