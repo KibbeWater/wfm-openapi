@@ -99,11 +99,3 @@ model SignInResponse {
   @doc("Authenticated user information")
   user: UserShort;
 }
-
-/**
- * V1 API response wrapper.
- */
-model V1ApiResponse<T> {
-  @doc("Response payload")
-  payload: T;
-}

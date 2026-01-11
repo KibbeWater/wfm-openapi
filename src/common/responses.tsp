@@ -49,3 +49,12 @@ model ErrorResponse {
   data: null;
   error: ApiError;
 }
+
+/**
+ * V1 API response wrapper.
+ * Used by legacy V1 endpoints that return data in a `payload` property.
+ */
+model V1ApiResponse<T> {
+  @doc("Response payload")
+  payload: T;
+}

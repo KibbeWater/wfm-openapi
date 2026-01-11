@@ -14,12 +14,14 @@ import "./models/sisters.tsp";
 import "./models/world.tsp";
 import "./models/orders.tsp";
 import "./models/users.tsp";
+import "./models/statistics.tsp";
 
 import "./routes/manifests.tsp";
 import "./routes/orders.tsp";
 import "./routes/users.tsp";
 import "./routes/auth.tsp";
 import "./routes/auth-v1.tsp";
+import "./routes/items-v1.tsp";
 import "./routes/achievements.tsp";
 import "./routes/dashboard.tsp";
 
